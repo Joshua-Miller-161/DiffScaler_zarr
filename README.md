@@ -6,8 +6,7 @@
 <a href="https://pytorchlightning.ai/"><img alt="Lightning" src="https://img.shields.io/badge/-Lightning-792ee5?logo=pytorchlightning&logoColor=white"></a>
 <a href="https://hydra.cc/"><img alt="Config: Hydra" src="https://img.shields.io/badge/Config-Hydra-89b8cd"></a>
 <a href="https://github.com/ashleve/lightning-hydra-template"><img alt="Template" src="https://img.shields.io/badge/-Lightning--Hydra--Template-017F2F?style=flat&logo=github&labelColor=gray"></a><br>
-[![Paper](http://img.shields.io/badge/paper-arxiv.1001.2234-B31B1B.svg)](https://arxiv.org/abs/2406.13627)
-<!-- [![Conference](http://img.shields.io/badge/AnyConference-year-4b44ce.svg)](https:) -->
+[![Paper](http://img.shields.io/badge/paper-GMD-B31B1B.svg)](https://doi.org/10.5194/gmd-18-2051-2025)
 
 </div>
 
@@ -16,6 +15,20 @@
 LDM_res is a downscaling model based on a Latent Diffusion Model (LDM, used by e.g. [Stable Diffusion](https://github.com/CompVis/stable-diffusion)), developed to downscale meteorological variables from ERA5 reanalyses.
 
 We trained and tested LDM_res to produce 2-km fields of 2-m temperature and 10-m wind speed horizontal components starting from a list of predictors from ERA5 (interpolated @16km). The high-resolution reference truth data are provided by a dynamical downscaling performed with COSMO\_CLM ([VHR-REA IT](https://www.mdpi.com/2306-5729/6/8/88)). The model and its performance are presented and discussed in this [GMD paper](https://doi.org/10.5194/gmd-18-2051-2025).
+
+```
+@Article{gmd-18-2051-2025,
+AUTHOR = {Tomasi, E. and Franch, G. and Cristoforetti, M.},
+TITLE = {Can AI be enabled to perform dynamical downscaling? A latent diffusion model to mimic kilometer-scale COSMO5.0\_CLM9 simulations},
+JOURNAL = {Geoscientific Model Development},
+VOLUME = {18},
+YEAR = {2025},
+NUMBER = {6},
+PAGES = {2051--2078},
+URL = {https://gmd.copernicus.org/articles/18/2051/2025/},
+DOI = {10.5194/gmd-18-2051-2025}
+}
+```
 
 This repository contains the code for testing and training LDM_res, all the baselines presented in the paper, and the code used to generate all the paper Figures.
 
