@@ -213,10 +213,19 @@ class LatentDiffusion(LightningModule):
         return self.p_losses(x, t, *args, **kwargs)
 
     def shared_step(self, batch):
-        (x,y,z,ts) = batch      # low_res, high_res_target, static_hres, time
-        assert not torch.any(torch.isnan(x)).item(), 'low_res data has NaNs'
-        assert not torch.any(torch.isnan(y)).item(), 'high_res has NaNs'
-        assert not torch.any(torch.isnan(z)).item(), 'static has NaNs'
+        if len(batch) == 4:
+            x, y, z, ts = batch
+        elif len(batch) == 3:
+            x, y, third = batch
+            if torch.is_tensor(third) and third.ndim >= 3:
+                z, ts = third, None
+            else:
+                z, ts = torch.zeros_like(x), third
+        else:
+            raise ValueError("Expected batch with 3 or 4 elements for LDM training.")
+        assert not torch.any(torch.isnan(x)).item(), "low_res data has NaNs"
+        assert not torch.any(torch.isnan(y)).item(), "high_res has NaNs"
+        assert not torch.any(torch.isnan(z)).item(), "static has NaNs"
         if self.autoencoder.ae_flag == 'residual':
             residual, _ = self.autoencoder.preprocess_batch([x, y, z])
             y = self.autoencoder.encode(residual)[0]

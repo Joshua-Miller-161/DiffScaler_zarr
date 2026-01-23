@@ -1,0 +1,72 @@
+_target_: src.zarr_data.data_module.ZarrDataModule
+
+# Root folder that contains <dataset_name>/<filename>
+data_root: ${paths.data_dir}
+
+# Dataset folder name and zarr file name
+# Override these from the command line for your dataset.
+dataset_name: ERA5_IMERG_Med_192x192_2000-2024
+filename: data.zarr
+val_filename: null
+
+# Optional dataset names used to fit transforms (defaults to dataset_name)
+model_src_dataset_name: UKCP_Local
+input_transform_dataset_name: UKCP_Local
+transform_dir: null
+
+batch_size: 4
+num_workers: 0
+prefetch_factor: null
+shuffle: true
+random_flip: false
+
+# If true, append time channels to inputs
+include_time_inputs: ${time_inputs}
+evaluation: false
+
+# Config fields used by transforms
+predictands:
+  variables: ["precipitation"]
+  target_transform_keys: ["sqrturrecen"]
+
+predictors:
+  variables:
+    - specHum850
+    - specHum700
+    - specHum500
+    - specHum250
+    - temp850
+    - temp700
+    - temp500
+    - temp250
+    - vort850
+    - vort700
+    - vort500
+    - vort250
+    - mslp
+    - elevation
+  input_transform_keys:
+    - stan
+    - stan
+    - stan
+    - stan
+    - stan
+    - stan
+    - stan
+    - stan
+    - stan
+    - stan
+    - stan
+    - stan
+    - stan
+    - mm
+
+# Extra data settings aligned with the provided example config
+image_size: 192
+uniform_dequantization: false
+input_transform_key: stan
+target_transform_key: sqrturrecen
+input_transform_dataset: ""
+
+# Example overrides / flags
+time_inputs: false
