@@ -117,7 +117,14 @@ class AutoencoderKL(LightningModule):
         }
     
     def preprocess_batch(self, batch):
-        (low_res, high_res, smt) = batch
+        if len(batch) >= 3:
+            low_res, high_res, third = batch[0], batch[1], batch[2]
+            smt = third if torch.is_tensor(third) and third.ndim >= 3 else None
+        elif len(batch) == 2:
+            low_res, high_res = batch
+            smt = None
+        else:
+            raise ValueError("Expected batch with at least 2 elements (low_res, high_res).")
         if self.ae_flag is None:
             return low_res, high_res
         elif self.ae_flag == 'residual':
@@ -125,6 +132,8 @@ class AutoencoderKL(LightningModule):
             if low_res.shape[-2::] != high_res.shape[-2::]:
                 # Assuming you are running an ldm and therefore passing low_res not interpolated
                 # and smt is static data: nearest-neighboring low-res and cat it to static data...')
+                if smt is None:
+                    smt = torch.zeros_like(low_res)
                 low_res = self.nn_lr_and_merge_with_static(low_res, smt)
             residual = high_res - self.unet(low_res)
             return residual, residual

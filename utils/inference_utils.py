@@ -7,8 +7,13 @@ def get_model_output(model_type, model, loaded_data, sampler = None, num_diffusi
         ts_ns = loaded_data[2]
         return test1, ts_ns
     elif model_type=='ldm':
-        low_res = loaded_data[0]     
-        static = loaded_data[2]
+        low_res = loaded_data[0]
+        if len(loaded_data) >= 4:
+            static = loaded_data[2]
+            ts_ns = loaded_data[3]
+        else:
+            static = torch.zeros_like(low_res)
+            ts_ns = loaded_data[2]
         # Generate residual and endode it!
         with torch.no_grad():
             residual, _ = model.autoencoder.preprocess_batch([ld.to(device='cuda:0') for ld in loaded_data[:-1]])
@@ -24,11 +29,9 @@ def get_model_output(model_type, model, loaded_data, sampler = None, num_diffusi
         # Run decoder to get estimate of high-res in pixel space
         with torch.no_grad():
             decoded_data = model.autoencoder.decode(test1).cpu()
-        # Get reference timestep
-        ts_ns = loaded_data[3]
         if model.autoencoder.ae_flag == 'residual':
             # Add back the unet results to the decoded residual
-            low_res_nn_merged_with_satic = model.autoencoder.nn_lr_and_merge_with_static(loaded_data[0],loaded_data[2])
+            low_res_nn_merged_with_satic = model.autoencoder.nn_lr_and_merge_with_static(low_res, static)
             with torch.no_grad():
                 result = decoded_data + model.autoencoder.unet(low_res_nn_merged_with_satic.to(device='cuda:0')).cpu()
             return result, ts_ns
