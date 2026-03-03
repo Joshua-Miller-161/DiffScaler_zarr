@@ -3,19 +3,24 @@
 # you can replace it with "." if you want the root to be the current working directory
 root_dir: ${oc.env:PROJECT_ROOT}
 
-# path to data directory
-data_dir: ${paths.root_dir}/data/
+# [required] root path for datasets — set DERIVED_DATA in your .env file
+# datasets are expected at: data_dir/dataset_name/train.zarr (and val.zarr)
+data_dir: ${oc.env:DERIVED_DATA}
+
+# [required] root path for model checkpoints, transforms, samples, etc.
+# set WORK_DIR in your .env file — should have at least ~10 GB free
+work_dir_root: ${oc.env:WORK_DIR}
 
 # path to logging directory
-log_dir: ${paths.root_dir}/logs/
+log_dir: ${paths.work_dir_root}/logs/
 
 # path to output directory, created dynamically by hydra
 # path generation pattern is specified in `configs/hydra/default.yaml`
 # use it to store all files generated during the run, like ckpts and metrics
 output_dir: ${hydra:runtime.output_dir}
 
-# path to working directory
-work_dir: ${hydra:runtime.cwd}
+# path to current working directory (where you run the training command)
+cwd: ${hydra:runtime.cwd}
 
 # path to pretrained_models:
 pretrained_models_dir: ${paths.root_dir}/pretrained_models/
