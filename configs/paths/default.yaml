@@ -24,3 +24,10 @@ cwd: ${hydra:runtime.cwd}
 
 # path to pretrained_models:
 pretrained_models_dir: ${paths.root_dir}/pretrained_models/
+
+# experiment name for organizing checkpoints
+# override this per experiment — see README for instructions
+experiment_name: "default_experiment"
+
+# path to save model checkpoints: WORK_DIR/dataset_name/experiment_name/
+ckpt_dir: ${paths.work_dir_root}/${data.dataset_name}/${paths.experiment_name}

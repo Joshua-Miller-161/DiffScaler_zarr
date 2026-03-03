@@ -106,4 +106,25 @@ To train VAE_res you need to provide a UNET checkpoint and to train LDM_res you 
 python src/train.py experiment=downscaling_ModelName_VarName
 ```
 
+## Setting `experiment_name` for checkpoint organization
+
+Model checkpoints are saved to `$WORK_DIR/<dataset_name>/<experiment_name>/` with filenames like `epoch=4-val_loss=0.0312.ckpt`. All checkpoints are saved (not just the best).
+
+The `experiment_name` variable is defined in [`configs/paths/default.yaml`](configs/paths/default.yaml) and can be set in two ways:
+
+**Option 1 — Command line (recommended for one-off runs):**
+```bash
+python src/train.py experiment=downscaling_UNET_2mT paths.experiment_name=my_run_v1
+```
+
+**Option 2 — In an experiment config file (recommended for reproducibility):**
+
+Add or edit the `paths` section in your experiment config (e.g. [`configs/experiment/downscaling_UNET_2mT.yaml`](configs/experiment/downscaling_UNET_2mT.yaml)):
+```yaml
+paths:
+  experiment_name: "downscaling_UNET_2mT"
+```
+
+If `experiment_name` is not set, it defaults to `"default_experiment"`.
+
 
