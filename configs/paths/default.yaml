@@ -31,3 +31,7 @@ experiment_name: "default_experiment"
 
 # path to save model checkpoints: WORK_DIR/dataset_name/experiment_name/
 ckpt_dir: ${paths.work_dir_root}/${data.dataset_name}/${paths.experiment_name}
+
+# base path to save model samples/predictions
+# full path at runtime: samples_dir/FilenameOfTestFile/modelType_epoch=X/experiment_name
+samples_dir: ${paths.work_dir_root}/samples

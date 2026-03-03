@@ -8,9 +8,13 @@ https://github.com/openai/improved-diffusion/blob/e94489283bb876ac1477d5dd7709bb
 https://github.com/CompVis/taming-transformers
 """
 
+from pathlib import Path
+from typing import Optional
+
 import torch
 import torch.nn as nn
 import numpy as np
+import zarr
 from lightning import LightningModule
 from contextlib import contextmanager
 from functools import partial
@@ -50,6 +54,9 @@ def make_beta_schedule(schedule, n_timestep, linear_start=1e-4, linear_end=2e-2,
 
 
 class LatentDiffusion(LightningModule):
+
+    MODEL_TYPE = "ldm"
+
     def __init__(self,
         denoiser,
         autoencoder,
@@ -65,6 +72,9 @@ class LatentDiffusion(LightningModule):
         cosine_s=8e-3,
         parameterization="eps",  # all assuming fixed variance schedules
         ae_load_state_file:str= None,
+        samples_dir: Optional[str] = None,
+        test_filename: Optional[str] = None,
+        experiment_name: Optional[str] = None,
     ):
         super().__init__()
         self.denoiser = denoiser
@@ -75,6 +85,10 @@ class LatentDiffusion(LightningModule):
         self.context_encoder = context_encoder
         self.lr = lr
         self.lr_warmup = lr_warmup
+
+        self._samples_dir = samples_dir
+        self._test_filename = test_filename
+        self._experiment_name = experiment_name
 
         assert parameterization in ["eps", "x0", "v"], 'currently only supporting "eps" and "x0" and "v"'
         self.parameterization = parameterization
@@ -262,6 +276,65 @@ class LatentDiffusion(LightningModule):
     def on_train_batch_end(self, *args, **kwargs):
         if self.use_ema:
             self.denoiser_ema(self.denoiser)
+
+    def _get_sample_dir(self) -> Path:
+        """Construct the output directory for samples.
+
+        Returns ``samples_dir/FilenameOfTestFile/modelType_epoch=X/experiment_name``.
+        """
+        test_stem = Path(self._test_filename).stem if self._test_filename else "unknown"
+        model_dir = f"{self.MODEL_TYPE}_epoch={self.current_epoch}"
+        exp_name = self._experiment_name or "default_experiment"
+        return Path(self._samples_dir) / test_stem / model_dir / exp_name
+
+    @torch.no_grad()
+    def predict_step(self, batch, batch_idx):
+        from .components.ldm.denoiser import DDIMSampler
+
+        if len(batch) == 4:
+            low_res, high_res, static, ts_ns = batch
+        else:
+            low_res, high_res, ts_ns = batch
+            static = torch.zeros_like(low_res)
+
+        residual, _ = self.autoencoder.preprocess_batch([low_res, high_res, static])
+        high_res_encoded = self.autoencoder.encode(residual)[0]
+        gen_shape = tuple(high_res_encoded.shape[1:])
+
+        sampler = DDIMSampler(self)
+        timesteps = torch.arange(0, 1, dtype=static.dtype).unsqueeze(0).expand(static.shape[0], -1)
+        ext_context = [
+            [static, timesteps],
+            [low_res, timesteps],
+        ]
+        sample = sampler.run_ldm_sampler(ext_context, num_diffusion_iters=100, batch_size=low_res.shape[0], gen_shape=gen_shape)
+        decoded = self.autoencoder.decode(sample).cpu()
+
+        if self.autoencoder.ae_flag == "residual":
+            low_res_merged = self.autoencoder.nn_lr_and_merge_with_static(low_res, static)
+            hr_pred = decoded + self.autoencoder.unet(low_res_merged).cpu()
+        else:
+            hr_pred = decoded
+
+        if self._samples_dir is not None:
+            sample_dir = self._get_sample_dir()
+            sample_dir.mkdir(parents=True, exist_ok=True)
+            preds_np = hr_pred.numpy()
+            store = zarr.open(
+                str(sample_dir / "predictions.zarr"),
+                mode="a",
+            )
+            if "predictions" not in store:
+                store.create_dataset(
+                    "predictions",
+                    data=preds_np,
+                    chunks=(1,) + preds_np.shape[1:],
+                    dtype="float32",
+                )
+            else:
+                store["predictions"].append(preds_np, axis=0)
+
+        return hr_pred
 
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr,

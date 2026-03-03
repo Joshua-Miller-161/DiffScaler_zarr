@@ -1,5 +1,9 @@
 _target_: src.models.unet_module.UnetLitModule
 
+samples_dir: ${paths.samples_dir}
+test_filename: ${data.filename}
+experiment_name: ${paths.experiment_name}
+
 net:
   _target_: src.models.components.unet.DownscalingUnet
   in_ch: 32

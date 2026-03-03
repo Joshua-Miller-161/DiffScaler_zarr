@@ -1,10 +1,14 @@
-from typing import Any
+from pathlib import Path
+from typing import Any, Optional
 
 import torch
+import zarr
 from lightning import LightningModule
 
 
 class UnetGANLitModule(LightningModule):
+
+    MODEL_TYPE = "gan"
 
     def __init__(self,
         net: torch.nn.Module,
@@ -13,6 +17,9 @@ class UnetGANLitModule(LightningModule):
         ckpt_path: str = None,
         net_ckpt: torch.nn.Module = None,
         ignore_keys=[],
+        samples_dir: Optional[str] = None,
+        test_filename: Optional[str] = None,
+        experiment_name: Optional[str] = None,
     ):
         super().__init__()
         # this line allows to access init params with 'self.hparams' attribute
@@ -22,6 +29,10 @@ class UnetGANLitModule(LightningModule):
 
         self.net = net
         self.loss = loss
+
+        self._samples_dir = samples_dir
+        self._test_filename = test_filename
+        self._experiment_name = experiment_name
 
         if ckpt_path is not None:
             self.init_from_ckpt(ckpt_path, ignore_keys=ignore_keys)
@@ -40,7 +51,7 @@ class UnetGANLitModule(LightningModule):
         if len(missing) > 0:
             print(f"Missing Keys: {missing}")
             print(f"Unexpected Keys: {unexpected}")
-            
+
     def forward(self, x: torch.Tensor):
         return self.net(x)
 
@@ -113,7 +124,7 @@ class UnetGANLitModule(LightningModule):
     def get_last_layer(self):
         # defined the right layer
         return self.net.last_layer().weight
-    
+
     def test_step(self, batch: Any, batch_idx: int):
         log_dict = self._test_step(batch, batch_idx)
         return log_dict
@@ -137,3 +148,38 @@ class UnetGANLitModule(LightningModule):
 
     def on_test_epoch_end(self):
         pass
+
+    def _get_sample_dir(self) -> Path:
+        """Construct the output directory for samples.
+
+        Returns ``samples_dir/FilenameOfTestFile/modelType_epoch=X/experiment_name``.
+        """
+        test_stem = Path(self._test_filename).stem if self._test_filename else "unknown"
+        model_dir = f"{self.MODEL_TYPE}_epoch={self.current_epoch}"
+        exp_name = self._experiment_name or "default_experiment"
+        return Path(self._samples_dir) / test_stem / model_dir / exp_name
+
+    def predict_step(self, batch: Any, batch_idx: int):
+        lr, hr, ts_ns = batch
+        with torch.no_grad():
+            hr_pred = self(lr)
+
+        if self._samples_dir is not None:
+            sample_dir = self._get_sample_dir()
+            sample_dir.mkdir(parents=True, exist_ok=True)
+            preds_np = hr_pred.cpu().numpy()
+            store = zarr.open(
+                str(sample_dir / "predictions.zarr"),
+                mode="a",
+            )
+            if "predictions" not in store:
+                store.create_dataset(
+                    "predictions",
+                    data=preds_np,
+                    chunks=(1,) + preds_np.shape[1:],
+                    dtype="float32",
+                )
+            else:
+                store["predictions"].append(preds_np, axis=0)
+
+        return hr_pred

@@ -1,6 +1,8 @@
-from typing import Any
+from pathlib import Path
+from typing import Any, Optional
 
 import torch
+import zarr
 from lightning import LightningModule
 
 
@@ -19,6 +21,8 @@ class UnetLitModule(LightningModule):
         https://lightning.ai/docs/pytorch/latest/common/lightning_module.html
     """
 
+    MODEL_TYPE = "unet"
+
     def __init__(
         self,
         net: torch.nn.Module,
@@ -27,12 +31,19 @@ class UnetLitModule(LightningModule):
         scheduler: torch.optim.lr_scheduler = None,
         ckpt_path: str = None,
         ignore_keys=[],
+        samples_dir: Optional[str] = None,
+        test_filename: Optional[str] = None,
+        experiment_name: Optional[str] = None,
     ):
         super().__init__()
 
         # this line allows to access init params with 'self.hparams' attribute
         # also ensures init params will be stored in ckpt
         self.save_hyperparameters(logger=False, ignore=['net', 'loss'])
+
+        self._samples_dir = samples_dir
+        self._test_filename = test_filename
+        self._experiment_name = experiment_name
 
         self.net = net
         # loss function
@@ -112,6 +123,41 @@ class UnetLitModule(LightningModule):
 
     def on_test_epoch_end(self):
         pass
+
+    def _get_sample_dir(self) -> Path:
+        """Construct the output directory for samples.
+
+        Returns ``samples_dir/FilenameOfTestFile/modelType_epoch=X/experiment_name``.
+        """
+        test_stem = Path(self._test_filename).stem if self._test_filename else "unknown"
+        model_dir = f"{self.MODEL_TYPE}_epoch={self.current_epoch}"
+        exp_name = self._experiment_name or "default_experiment"
+        return Path(self._samples_dir) / test_stem / model_dir / exp_name
+
+    def predict_step(self, batch: Any, batch_idx: int):
+        lr, hr, ts_ns = batch
+        with torch.no_grad():
+            hr_pred = self(lr)
+
+        if self._samples_dir is not None:
+            sample_dir = self._get_sample_dir()
+            sample_dir.mkdir(parents=True, exist_ok=True)
+            preds_np = hr_pred.cpu().numpy()
+            store = zarr.open(
+                str(sample_dir / "predictions.zarr"),
+                mode="a",
+            )
+            if "predictions" not in store:
+                store.create_dataset(
+                    "predictions",
+                    data=preds_np,
+                    chunks=(1,) + preds_np.shape[1:],
+                    dtype="float32",
+                )
+            else:
+                store["predictions"].append(preds_np, axis=0)
+
+        return hr_pred
 
     def configure_optimizers(self):
         """Choose what optimizers and learning-rate schedulers to use in your optimization.

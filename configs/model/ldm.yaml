@@ -1,6 +1,10 @@
 _target_: src.models.ldm_module.LatentDiffusion
 parameterization: "v"
 
+samples_dir: ${paths.samples_dir}
+test_filename: ${data.filename}
+experiment_name: ${paths.experiment_name}
+
 denoiser:
   _target_: src.models.components.ldm.denoiser.UNetModel
   in_channels: 32
