@@ -4,6 +4,7 @@ import hydra
 import lightning as L
 import pyrootutils
 import torch
+from dotenv import load_dotenv
 from lightning import Callback, LightningDataModule, LightningModule, Trainer
 from lightning.pytorch.loggers import Logger
 from omegaconf import DictConfig
@@ -25,6 +26,10 @@ pyrootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 #
 # more info: https://github.com/ashleve/pyrootutils
 # ------------------------------------------------------------------------------------ #
+
+# Explicitly load .env so DERIVED_DATA and WORK_DIR are available before Hydra
+# resolves the config (override=False keeps any variables already set in the shell)
+load_dotenv(override=False)
 
 from src import utils
 

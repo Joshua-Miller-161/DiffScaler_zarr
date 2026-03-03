@@ -1,18 +1,21 @@
 _target_: src.zarr_data.data_module.ZarrDataModule
 
 # Root folder that contains <dataset_name>/<filename>
+# Resolves to the DERIVED_DATA environment variable from your .env file
 data_root: ${paths.data_dir}
 
-# Dataset folder name and zarr file name
-# Override these from the command line for your dataset.
+# Dataset folder name and zarr file names
+# Override dataset_name from the command line or experiment config.
+# Paths will be: DERIVED_DATA/dataset_name/train.zarr  and  DERIVED_DATA/dataset_name/val.zarr
 dataset_name: ERA5_IMERG_Med_192x192_2000-2024
-filename: data.zarr
-val_filename: null
+filename: train.zarr
+val_filename: val.zarr
 
 # Optional dataset names used to fit transforms (defaults to dataset_name)
 model_src_dataset_name: UKCP_Local
 input_transform_dataset_name: UKCP_Local
-transform_dir: null
+# Directory to cache fitted transforms; resolves to WORK_DIR/transforms from your .env file
+transform_dir: ${paths.work_dir_root}/transforms
 
 batch_size: 4
 num_workers: 0
